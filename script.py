@@ -3,7 +3,7 @@ import urllib.parse
 import xml.etree.ElementTree as ET
 import os
 import time
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 import PyPDF2 as pypdf
 import re
 
@@ -123,7 +123,7 @@ class ArxivAPI:
             print(f"Error downloading PDF: {e}")
             return None
         
-        # TODO ERROR HANDLING
+    # TODO ERROR HANDLING
     def extract_text_from_pdf_and_clean(self, pdf_path: str) -> str:
         """
         Extract texts from pdf 
@@ -152,27 +152,61 @@ class ArxivAPI:
             data = data.strip()
 
             return data
+    # TODO ERROR HANDLING
     def process_papers_for_rag(self, query: str, max_papers: int = 5) -> List[Dict]:
-        pass
+        """
+        Process multiple papers and prepare them to augment prompt
+        
+        Args:
+            query: Search query
+            max_papers: max_papers to prepare and process
+            
+        Returns:
+            List of papers and their contents
+        """
+        # 1. Search for papers
+        # 2. For each paper: download → extract → clean → store
+        # 3. Return list of papers with their text content
+
+        search_result = self.search_papers(query, max_papers)
+        paper_list = []
+
+        for paper in search_result['papers']:
+            # download paper for processing using its id
+            pdf_path = self.download_paper_pdf(paper['id'])
+            # extract and clean
+            cleaned_text  = self.extract_text_from_pdf_and_clean(pdf_path)
+            paper['pdf_path'] = pdf_path
+            paper['text_content'] = cleaned_text
+            paper_list.append(paper)
+        return paper_list
+            
+    
 
 def main():
     """Main function to demonstrate example arXiv API usage"""
     api = ArxivAPI()
     
     print("=== arXiv API Paper Retrieval for AI Testing ===\n")
+
+    paper_list = api.process_papers_for_rag("AI", max_papers=1)
+
+    if paper_list:
+        print(paper_list[0]['text_content'])
     
-    # Example 1: Search for recent AI papers
-    print("1. Searching for recent AI papers...")
-    ai_papers = api.search_papers("AI", max_results=5)
+    # # Example 1: Search for recent AI papers
+    # print("1. Searching for recent AI papers...")
+    # ai_papers = api.search_papers("AI", max_results=5)
     
-    if ai_papers['papers']:
-        print(f"Found {ai_papers['total_results']} papers:")
-        for i, paper in enumerate(ai_papers['papers'], 1):
-            print(f"\n{i}. {paper['title']}")
-            print(f"   Authors: {', '.join(paper['authors'])}")
-            print(f"   ID: {paper['id']}")
-            print(f"   Published: {paper['published'][:10]}")
-            print(f"   PDF: {paper['pdf_url']}")
+    # if ai_papers['papers']:
+    #     print(f"Found {ai_papers['total_results']} papers:")
+    #     for i, paper in enumerate(ai_papers['papers'], 1):
+    #         print(f"\n{i}. {paper['title']}")
+    #         print(f"   Authors: {', '.join(paper['authors'])}")
+    #         print(f"   ID: {paper['id']}")
+    #         print(f"   Published: {paper['published'][:10]}")
+    #         print(f"   PDF: {paper['pdf_url']}")
+    
 
 if __name__ == "__main__":
     main()
