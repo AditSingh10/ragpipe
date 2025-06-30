@@ -1,19 +1,34 @@
+from dotenv import load_dotenv
 import urllib.request as libreq
 import urllib.parse
 import xml.etree.ElementTree as ET
 import os
 import time
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union
 import PyPDF2 as pypdf
 import re
+import urllib.request
+from pinecone import QueryResponse, Pinecone
+from sentence_transformers import SentenceTransformer
 
+# TODO ERROR HANDLING
 class ArxivAPI:
     """A class to interact with the arXiv API for retrieving papers"""
     
+    load_dotenv()
+    PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
+    PINECONE_ENVIRONMENT = os.getenv('ENVIRONMENT')
+    PINECONE_INDEX_NAME = os.getenv('INDEX')
+
     def __init__(self):
         # stems for API urls
         self.base_url = "http://export.arxiv.org/api/query"
         self.pdf_base_url = "https://arxiv.org/pdf"
+        
+        # Initialize embedding model and Pinecone
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        self.pc = Pinecone(api_key=self.PINECONE_API_KEY)
+        self.index = self.pc.Index(self.PINECONE_INDEX_NAME)
     
  
     def search_papers(self, query: str, max_results: int = 10, start: int = 0) -> Dict[str, Any]:
@@ -63,7 +78,7 @@ class ArxivAPI:
             
             return {
                 'total_results': len(papers),
-                'papers': papers
+                'papers': papers 
             }
             
         except Exception as e:
@@ -123,7 +138,7 @@ class ArxivAPI:
             print(f"Error downloading PDF: {e}")
             return None
         
-    # TODO ERROR HANDLING
+    
     def extract_text_from_pdf_and_clean(self, pdf_path: str) -> str:
         """
         Extract texts from pdf 
@@ -152,7 +167,7 @@ class ArxivAPI:
             data = data.strip()
 
             return data
-    # TODO ERROR HANDLING
+    
     def process_papers_for_rag(self, query: str, max_papers: int = 5) -> List[Dict]:
         """
         Process multiple papers and prepare them to augment prompt
@@ -166,7 +181,7 @@ class ArxivAPI:
         """
         # 1. Search for papers
         # 2. For each paper: download → extract → clean → store
-        # 3. Return list of papers with their text content
+        # 3. Return list of papers with their text content and other metadata
 
         search_result = self.search_papers(query, max_papers)
         paper_list = []
@@ -180,6 +195,92 @@ class ArxivAPI:
             paper['text_content'] = cleaned_text
             paper_list.append(paper)
         return paper_list
+    
+    def add_papers_to_pinecone(self, papers_list):
+        '''
+        Convert papers to embeddings and add to vector database
+
+        Args:
+            papers_list: List of Dicts with metadata for each paper
+        '''
+        # store vectors for upsert into vector db
+        vectors = []
+        # we are getting a list of dictionaries
+        for paper in papers_list:
+            # get the embedding
+            embedding = self.embedding_model.encode(paper['text_content'])
+            # prepare for upsert into vector database using paper id as vector ID
+            vectors.append((paper['id'], embedding.tolist(),
+                           {
+                               'title': paper['title'],
+                               'authors': paper['authors'],
+                               'summary': paper['summary'],
+                               'pdf_url': paper['pdf_url']
+                           }))
+        # batch upsert
+        self.index.upsert(vectors=vectors)
+
+
+    def search_pinecone(self, query: str, max_results: int=5) -> QueryResponse:
+        """
+        Search existing papers in vector db
+        """
+        # Search existing papers in Pinecone
+        # Convert query to embedding
+        query_embedding = self.embedding_model.encode(query).tolist()
+        results = self.index.query(
+            vector=query_embedding,
+            top_k=max_results,
+            include_metadata=True
+        )
+
+        return results
+
+    def assess_search_quality(self, results: QueryResponse, query:str, threshold: float = 0.8) -> tuple[bool, Union[str, Dict]]:
+        """
+        Assess if search results are good enough
+        """
+        if not results.matches:
+            return False, "No results found"
+    
+        # Get similarity scores
+        scores = [match.score for match in results.matches]
+        avg_score = sum(scores) / len(scores)
+        max_score = max(scores)
+        
+        # Quality criteria
+        quality_metrics = {
+            'avg_similarity': avg_score,
+            'max_similarity': max_score,
+            'num_results': len(results.matches),
+            'threshold_met': max_score >= threshold
+        }
+        
+        # make the decision
+        is_good_enough = (
+            max_score >= threshold and  # At least one very relevant result
+            avg_score >= 0.75 and       # Overall relevance is decent
+            len(results.matches) >= 2   # Have multiple results
+        )
+        
+        return is_good_enough, quality_metrics    
+
+    
+    def rag_query(self, user_query, max_results=5):
+        # Search Pinecone first
+        query_response = self.search_pinecone(user_query, max_results)
+        eval = self.assess_search_quality(query_response)
+        # If not enough results, search arXiv
+        if eval[0] == False:
+            #modify search_papers to do cleaning, processing etc
+            papers_list = self.search_papers(user_query, max_results)
+            # Add new papers to Pinecone
+            self.add_papers_to_pinecone(papers_list)
+            return papers_list
+        else:
+            # use db papers for augmenting prompt
+            return "db good"
+        
             
     
 
@@ -187,12 +288,24 @@ def main():
     """Main function to demonstrate example arXiv API usage"""
     api = ArxivAPI()
     
+    # Test Pinecone connection
+    print("Testing Pinecone connection...")
+    try:
+        # Get index stats to verify connection
+        stats = api.index.describe_index_stats()
+        print(f"✅ Pinecone connected successfully!")
+        print(f"   Index: {stats.dimension} dimensions")
+        print(f"   Total vectors: {stats.total_vector_count}")
+    except Exception as e:
+        print(f"❌ Pinecone connection failed: {e}")
+        return
+    
     print("=== arXiv API Paper Retrieval for AI Testing ===\n")
 
-    paper_list = api.process_papers_for_rag("AI", max_papers=1)
+    # paper_list = api.process_papers_for_rag("AI", max_papers=1)
 
-    if paper_list:
-        print(paper_list[0]['text_content'])
+    # if paper_list:
+    #     print(paper_list[0]['text_content'])
     
     # # Example 1: Search for recent AI papers
     # print("1. Searching for recent AI papers...")
