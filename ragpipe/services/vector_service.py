@@ -84,7 +84,7 @@ class VectorService:
                 summary=match.metadata['summary'],
                 published="",  # Not stored in vector DB
                 pdf_url=match.metadata['pdf_url'],
-                text_content=match.metadata['text_content'],
+                text_content='', # no longer stored in DB
                 score=match.score
             )
             papers.append(paper)
