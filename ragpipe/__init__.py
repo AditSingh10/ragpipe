@@ -24,5 +24,5 @@ __all__ = [
 
 # Version info
 __version__ = "1.0.0"
-__author__ = "Your Name"
-__description__ = "A RAG pipeline for academic papers using ArXiv and Pinecone" 
+__author__ = "Adit Singh"
+__description__ = "A RAG pipeline for academic papers using ArXiv and Pinecone intended for querying LLM" 
