@@ -31,7 +31,7 @@ class ArxivAPI:
         self.index = self.pc.Index(self.PINECONE_INDEX_NAME)
     
  
-    def search_papers(self, query: str, max_results: int = 10, start: int = 0) -> Dict[str, Any]:
+    def search_papers(self, query: str, max_results: int = 10, start: int = 0) -> List[Dict]:
         """
         Search for papers using arXiv API
         
@@ -41,7 +41,7 @@ class ArxivAPI:
             start: Starting index for pagination
             
         Returns:
-            Dictionary containing search results
+            List of paper dictionaries
         """
         # Build the query URL
         params = {
@@ -76,14 +76,11 @@ class ArxivAPI:
                 }
                 papers.append(paper)
             
-            return {
-                'total_results': len(papers),
-                'papers': papers 
-            }
+            return papers
             
         except Exception as e:
             print(f"Error searching papers: {e}")
-            return {'total_results': 0, 'papers': []}
+            return []
     
     def get_paper_by_id(self, paper_id: str) -> Optional[Dict[str, Any]]:
         """
@@ -98,8 +95,8 @@ class ArxivAPI:
         query = f"id:{paper_id}"
         results = self.search_papers(query, max_results=1)
         
-        if results['papers']:
-            return results['papers'][0]
+        if results:
+            return results[0]
         return None
     
     def download_paper_pdf(self, paper_id: str, output_dir: str = "downloads") -> Optional[str]:
@@ -186,7 +183,7 @@ class ArxivAPI:
         search_result = self.search_papers(query, max_papers)
         paper_list = []
 
-        for paper in search_result['papers']:
+        for paper in search_result:
             # download paper for processing using its id
             pdf_path = self.download_paper_pdf(paper['id'])
             # extract and clean
@@ -269,57 +266,77 @@ class ArxivAPI:
     def rag_query(self, user_query, max_results=5):
         # Search Pinecone first
         query_response = self.search_pinecone(user_query, max_results)
-        eval = self.assess_search_quality(query_response)
+        eval = self.assess_search_quality(query_response, user_query)
         # If not enough results, search arXiv
         if eval[0] == False:
             #modify search_papers to do cleaning, processing etc
-            papers_list = self.search_papers(user_query, max_results)
+            papers_list=self.process_papers_for_rag(user_query, max_results)
             # Add new papers to Pinecone
             self.add_papers_to_pinecone(papers_list)
             return papers_list
         else:
             # use db papers for augmenting prompt
-            return "db good"
+            papers_list = []
+            for match in query_response.matches:
+                paper = {
+                    'id': match.id,
+                    'score': match.score,
+                    'title': match.metadata['title'],
+                    'authors': match.metadata['authors'],
+                    'summary': match.metadata['summary'],
+                    'text_content': match.metadata['text_content'],
+                    'pdf_url': match.metadata['pdf_url']
+                }
+                papers_list.append(paper)
+            return papers_list
         
             
     
 
 def main():
-    """Main function to demonstrate example arXiv API usage"""
+    """Main function to test all functionality"""
+    print("=== Testing ArXiv RAG Pipeline ===\n")
+    
+    # Test 1: Connections
     api = ArxivAPI()
+    print("✅ ArXiv API and Pinecone connections working")
     
-    # Test Pinecone connection
-    print("Testing Pinecone connection...")
-    try:
-        # Get index stats to verify connection
-        stats = api.index.describe_index_stats()
-        print(f"✅ Pinecone connected successfully!")
-        print(f"   Index: {stats.dimension} dimensions")
-        print(f"   Total vectors: {stats.total_vector_count}")
-    except Exception as e:
-        print(f"❌ Pinecone connection failed: {e}")
-        return
+    # Test 2: ArXiv Search
+    print("\n=== Testing ArXiv Search ===")
+    results = api.search_papers("transformer", max_results=3)
+    print(f"Found {len(results)} papers")
+    for paper in results:
+        print(f"- {paper['title'][:50]}...")
     
-    print("=== arXiv API Paper Retrieval for AI Testing ===\n")
-
-    # paper_list = api.process_papers_for_rag("AI", max_papers=1)
-
-    # if paper_list:
-    #     print(paper_list[0]['text_content'])
+    # Test 3: PDF Processing
+    print("\n=== Testing PDF Processing ===")
+    papers = api.process_papers_for_rag("AI", max_papers=1)
+    if papers:
+        paper = papers[0]
+        print(f"✅ Processed: {paper['title']}")
+        print(f"Text length: {len(paper['text_content'])} characters")
+        print(f"First 200 chars: {paper['text_content'][:200]}...")
     
-    # # Example 1: Search for recent AI papers
-    # print("1. Searching for recent AI papers...")
-    # ai_papers = api.search_papers("AI", max_results=5)
+    # Test 4: Vector Database
+    print("\n=== Testing Vector Database ===")
+    if papers:
+        api.add_papers_to_pinecone(papers)
+        print("✅ Papers added to Pinecone")
+        
+        # Test search
+        results = api.search_pinecone("transformer architecture")
+        print(f"✅ Vector search found {len(results.matches)} results")
+        for match in results.matches:
+            print(f"- {match.metadata['title'][:50]}... (score: {match.score:.3f})")
     
-    # if ai_papers['papers']:
-    #     print(f"Found {ai_papers['total_results']} papers:")
-    #     for i, paper in enumerate(ai_papers['papers'], 1):
-    #         print(f"\n{i}. {paper['title']}")
-    #         print(f"   Authors: {', '.join(paper['authors'])}")
-    #         print(f"   ID: {paper['id']}")
-    #         print(f"   Published: {paper['published'][:10]}")
-    #         print(f"   PDF: {paper['pdf_url']}")
+    # Test 5: Complete RAG Pipeline
+    print("\n=== Testing Complete RAG Pipeline ===")
+    results = api.rag_query("transformer architecture improvements", max_results=3)
+    print(f"✅ RAG query returned {len(results)} papers")
+    for paper in results:
+        print(f"- {paper['title'][:50]}... (score: {paper.get('score', 'N/A')})")
     
+    print("\n=== Testing Complete ===")
 
 if __name__ == "__main__":
     main()
