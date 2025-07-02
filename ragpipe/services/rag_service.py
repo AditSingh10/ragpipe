@@ -71,6 +71,8 @@ class RAGService:
         # Step 2: Assess quality of existing results
         is_good_enough, quality_metrics = self.assess_search_quality(query_response, user_query)
         print(f"Vector DB quality metrics: {quality_metrics}")
+        print(f"is good enough: {is_good_enough}")
+  
         
         if is_good_enough:
             # Use existing papers from vector database

@@ -23,6 +23,6 @@ class Settings:
     DOWNLOAD_DIR = "downloads"
     
     # Quality thresholds
-    DEFAULT_SIMILARITY_THRESHOLD = 0.8
-    MIN_AVERAGE_SCORE = 0.75
+    DEFAULT_SIMILARITY_THRESHOLD = 0.2
+    MIN_AVERAGE_SCORE = 0.2
     MIN_RESULTS_COUNT = 2 
