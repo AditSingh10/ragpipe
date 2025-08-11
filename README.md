@@ -112,7 +112,7 @@ DEFAULT_SIMILARITY_THRESHOLD=0.4
 - **`DEFAULT_SIMILARITY_THRESHOLD`**: Set to 0.4 for academic paper relevance
 - **`MAX_CONTEXT_LENGTH`**: Limits context to prevent LLM timeouts
 
-## 🚀 Usage
+##  Usage
 
 ### 1. Start Ollama Service
 
@@ -147,7 +147,7 @@ python test_section_chunker.py
 python test_chunked_rag.py
 ```
 
-## 🔧 Core Components
+##  Core Components
 
 ### Section Chunker
 
@@ -191,7 +191,7 @@ The project includes test scripts:
 - **`test_pdf_content.py`**: Verifies PDF text extraction
 - **`ragpipe/main.py`**: End-to-end pipeline testing
 
-## 🔍 Troubleshooting
+##  Troubleshooting
 
 ### Common Issues
 
