@@ -1,5 +1,5 @@
 """
-LLM service for interfacing with language models
+Interface for language model interactions
 """
 
 from typing import List, Optional
@@ -7,13 +7,10 @@ import requests
 import sys
 import os
 
-
-# Handle imports for both module and direct execution
 try:
     from ..models.conversation import Message
     from ..config.llm_settings import LLMSettings
 except ImportError:
-    # When running directly, add parent directories to path
     sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
     from llm_integration.models.conversation import Message
     from llm_integration.config.llm_settings import LLMSettings
@@ -22,38 +19,26 @@ class LLMService:
     """Service for interacting with language models"""
     
     def __init__(self):
-        """
-        Initialize LLM service using config settings
-        """
         self.model = LLMSettings.LLM_MODEL
         self.provider = LLMSettings.LLM_PROVIDER
         self.base_url = LLMSettings.OLLAMA_BASE_URL
         self.timeout = LLMSettings.OLLAMA_TIMEOUT
 
-        # Initialize Ollama client
         if self.provider.lower() != 'ollama':
             raise ValueError(f"Only Ollama provider is supported. Got: {self.provider}")
         
-        self.client = 'ollama'  # Use string identifier for Ollama
-        
+        self.client = 'ollama'
         self.conversation_history: List[Message] = []
     
     def generate_response(self, prompt: str, context: str = "") -> str:
-        """
-        Generate a response from the LLM
-        
-        Args:
-            prompt: The user's prompt
-            context: Additional context (e.g., paper content)
-            
-        Returns:
-            LLM generated response
-        """
-        # Augment prompt with context if possible
-        if context:
-            augmented_prompt = f"{context}\n\n{prompt}\n\nPlease provide a detailed and comprehensive answer, but it should not be redundant."
+        """Generate a response from the LLM"""
+        simple_greetings = ['hey', 'hi', 'hello', 'thanks', 'thank you', 'ok', 'okay']
+        if prompt.lower().strip() in simple_greetings:
+            augmented_prompt = prompt
+        elif context:
+            augmented_prompt = f"{context}\n\n{prompt}\n\nPlease provide a detailed and comprehensive answer based on the context above."
         else:
-            augmented_prompt = f"{prompt}\n\nPlease provide a detailed and comprehensive answer, but it should not be redundant."
+            augmented_prompt = prompt
 
         return self._generate_ollama_response(augmented_prompt)
     
@@ -88,17 +73,14 @@ class LLMService:
     
     def add_to_conversation(self, message: Message):
         """Add a message to the conversation history"""
-        # TODO: Implement conversation management
         pass
     
     def get_conversation_history(self) -> List[Message]:
         """Get the conversation history"""
-        # TODO: Implement history retrieval
         pass
     
     def clear_conversation(self):
         """Clear the conversation history"""
-        # TODO: Implement conversation clearing
         pass 
 
 def main():

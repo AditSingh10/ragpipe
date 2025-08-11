@@ -2,46 +2,76 @@
 Prompt builder service for constructing LLM prompts
 """
 
-from typing import List
-from ..models.cached_paper import CachedPaper
+from typing import List, Dict
+import sys
+import os
+
+try:
+    from ragpipe.models.paper import Paper
+except ImportError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+    from ragpipe.models.paper import Paper
 
 class PromptBuilder:
     """Service for building prompts for LLM"""
     
-    def __init__(self, max_context_length: int = 8000):
-        """
-        Initialize prompt builder
-        
-        Args:
-            max_context_length: Maximum context length in tokens
-        """
+    def __init__(self, max_context_length: int = 4000):
         self.max_context_length = max_context_length
     
-    def build_rag_prompt(self, query: str, papers: List[CachedPaper]) -> str:
-        """
-        Build a prompt for RAG-augmented queries
-        
-        Args:
-            query: User's question
-            papers: Relevant papers for context
-            
-        Returns:
-            Formatted prompt
-        """
-        if not papers:
+    def build_rag_prompt_from_chunks(self, query: str, chunks: List[Dict]) -> str:
+        """Build a prompt for RAG-augmented queries using chunked content"""
+        if not chunks:
             return query
         
-        # Format paper context
-        paper_context = self.format_paper_context(papers)
+        # Format chunks into context
+        chunk_context = self._format_chunks_for_context(chunks)
         
         # Use the template from settings
         from ..config.llm_settings import LLMSettings
         prompt = LLMSettings.RAG_PROMPT_TEMPLATE.format(
-            paper_context=paper_context,
+            paper_context=chunk_context,
             user_query=query
         )
         
         return prompt
+    
+    def _format_chunks_for_context(self, chunks: List[Dict]) -> str:
+        """
+        Format chunks into a readable context string
+        
+        Args:
+            chunks: List of chunk dictionaries
+            
+        Returns:
+            Formatted context string
+        """
+        if not chunks:
+            return ""
+        
+        context_parts = []
+        total_length = 0
+        max_context_length = 8000  # Limit context for 5 chunks to prevent timeouts
+        
+        for i, chunk in enumerate(chunks, 1):
+            # Format each chunk with metadata
+            chunk_text = f"""
+--- Chunk {i} ---
+Paper: {chunk['paper_title']}
+Authors: {', '.join(chunk['paper_authors'])}
+Section: {chunk['section_header']} (Level {chunk['section_level']})
+Content: {chunk['content']}
+--- End Chunk {i} ---
+"""
+            
+            # Check if adding this chunk would exceed the limit
+            if total_length + len(chunk_text) > max_context_length:
+                print(f"   ⚠️  Truncating context at chunk {i} to prevent timeout")
+                break
+                
+            context_parts.append(chunk_text)
+            total_length += len(chunk_text)
+        
+        return "\n".join(context_parts)
     
     def build_follow_up_prompt(self, query: str, conversation_history: List[str]) -> str:
         """
@@ -69,9 +99,9 @@ class PromptBuilder:
         
         return prompt
     
-    def format_paper_context(self, papers: List[CachedPaper]) -> str:
+    def format_paper_context(self, papers: List[Paper]) -> str:
         """
-        Format papers into context string
+        Format papers into context string (legacy method)
         
         Args:
             papers: Papers to format

@@ -1,5 +1,5 @@
-from services.rag_service import RAGService
-from services.vector_service import VectorService
+from ragpipe.services.rag_service import RAGService
+from ragpipe.services.vector_service import VectorService
 
 def main():
     """Main function to test the refactored RAG pipeline"""

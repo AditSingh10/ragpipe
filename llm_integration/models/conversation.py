@@ -18,7 +18,6 @@ class Conversation:
     """Represents a conversation between user and assistant"""
     user_id: str
     messages: List[Message] = field(default_factory=list)
-    cached_papers: List['CachedPaper'] = field(default_factory=list)  # Forward reference
     use_rag: bool = False
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)

@@ -1,9 +1,14 @@
+"""
+Academic paper data model
+"""
+
 from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import datetime
 
 @dataclass
 class Paper:
-    """A class to represent an academic paper"""
+    """Academic paper with metadata and content"""
     
     id: str
     title: str

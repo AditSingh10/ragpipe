@@ -1,8 +1,8 @@
 from typing import List, Dict, Union
 from sentence_transformers import SentenceTransformer
 from pinecone import QueryResponse, Pinecone
-from models.paper import Paper
-from config.settings import Settings
+from ..models.paper import Paper
+from ..config.settings import Settings
 
 class VectorService:
     """Service for vector database operations"""

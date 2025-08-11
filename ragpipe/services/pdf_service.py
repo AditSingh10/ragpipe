@@ -2,9 +2,9 @@ import os
 import urllib.request
 import PyPDF2 as pypdf
 from typing import List, Optional
-from models.paper import Paper
-from utils.text_cleaner import TextCleaner
-from config.settings import Settings
+from ..models.paper import Paper
+from ..utils.text_cleaner import TextCleaner
+from ..config.settings import Settings
 
 class PDFService:
     """Service for handling PDF operations"""
@@ -49,13 +49,26 @@ class PDFService:
     
     def extract_text_from_pdf(self, pdf_path: str) -> str:
         """
-        Extract text from PDF
+        Extract text from PDF (cleaned version)
         
         Args:
             pdf_path: Path to PDF file
             
         Returns:
             Extracted and cleaned text
+        """
+        raw_text = self.extract_raw_text_from_pdf(pdf_path)
+        return self.text_cleaner.clean_pdf_text(raw_text)
+    
+    def extract_raw_text_from_pdf(self, pdf_path: str) -> str:
+        """
+        Extract raw text from PDF without cleaning
+        
+        Args:
+            pdf_path: Path to PDF file
+            
+        Returns:
+            Raw extracted text (preserves some formatting clues)
         """
         try:
             with open(pdf_path, 'rb') as file:
@@ -65,8 +78,7 @@ class PDFService:
                     curr_text = page.extract_text()
                     data += curr_text
                 
-                # Clean the extracted text
-                return self.text_cleaner.clean_pdf_text(data)
+                return data
                 
         except Exception as e:
             print(f"Error extracting text from PDF: {e}")

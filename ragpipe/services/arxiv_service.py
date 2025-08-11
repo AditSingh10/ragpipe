@@ -2,8 +2,8 @@ import urllib.request as libreq
 import urllib.parse
 import xml.etree.ElementTree as ET
 from typing import List, Optional
-from models.paper import Paper
-from config.settings import Settings
+from ..models.paper import Paper
+from ..config.settings import Settings
 
 class ArxivService:
     """Service for interacting with ArXiv API"""
