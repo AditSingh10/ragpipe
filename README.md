@@ -2,7 +2,7 @@
 
 A retrieval-augmented generation (RAG) system designed for academic research papers. Combines intelligent text chunking, vector search, and local LLM capabilities to provide context-aware responses to research queries.
 
-## 🚀 Features
+##  Features
 
 - **Intelligent Text Chunking**: Section-aware paper splitting using research paper  structure detection
 - **Vector Search**: Pinecone integration for semantic similarity search
@@ -11,7 +11,7 @@ A retrieval-augmented generation (RAG) system designed for academic research pap
 - **ArXiv Integration**: Direct paper search and PDF processing
 - **Smart Context Management**: Automatic relevance scoring and chunk selection
 
-## 🏗️ Architecture
+##  Architecture
 
 ```
 pipeline/
