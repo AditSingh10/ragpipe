@@ -41,14 +41,14 @@ pipeline/
 └── requirements.txt         # Python dependencies
 ```
 
-## 📋 Prerequisites
+##  Prerequisites
 
 - **Python 3.8+**
 - **Ollama** with **llama2:7b** model
 - **Pinecone** account and API key
 - **ArXiv** API access
 
-## 🛠️ Installation
+##  Installation
 
 1. **Clone the repository**
    ```bash
@@ -82,7 +82,7 @@ pipeline/
    # Edit .env with your API keys
    ```
 
-## ⚙️ Configuration
+## Configuration
 
 ### Environment Variables
 
