@@ -2,6 +2,8 @@
 
 A retrieval-augmented generation (RAG) system designed for academic research papers. Combines intelligent text chunking, vector search, and local LLM capabilities to provide context-aware responses to research queries.
 
+[![Watch the video](https://img.youtube.com/vi/qfCmAPbl2sE/maxresdefault.jpg)](https://youtu.be/qfCmAPbl2sE)
+
 ##  Features
 
 - **Intelligent Text Chunking**: Section-aware paper splitting using research paper  structure detection
